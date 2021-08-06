@@ -1,6 +1,12 @@
+SWIM ran this on 3 accounts for a little under 3 months(approx 2000 raids) two temps towards the end. However this is a commonly reported activity so would only recommend using on burner accounts. Works nicely if setup on a cloud VM and webhooked to discord. Only need to check once every 6 hours if using the auto leave/rejoin cc feature  
+
 Additional requirements 
-- iutils by illumine 
-- "Chambers of Xeric" plugin Raid Layout Message Toggled ON    
+- iutils by illumine (illumineawake/illu-plugins)  
+- "Chambers of Xeric" plugin Raid Layout Message Toggled ON  
+
+V1.4  
+Added Java webhook instead of external python file  
+Modified reset to be on logout instead of login due to sometimes leaving cc immediately upon login  
 
 V1.3  
 Added 5h login timer handling  
