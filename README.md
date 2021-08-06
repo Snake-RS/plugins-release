@@ -1,10 +1,6 @@
-Add iutils jar and coxRaidScouter jar and webhook.py to .openosrs/plugins
-
 Additional requirements 
-- python, requests module, dhooks module
-
-Must be on fixed Mode for auto/rejoin CC mode.  
-Also depends upon "Chambers of Xeric" plugin Raid Layout Message
+- iutils by illumine 
+- "Chambers of Xeric" plugin Raid Layout Message Toggled ON    
 
 V1.3  
 Added 5h login timer handling  
