@@ -4,6 +4,10 @@ Additional requirements
 - iutils by illumine (illumineawake/illu-plugins)  
 - "Chambers of Xeric" plugin Raid Layout Message Toggled ON  
 
+
+V1.5  
+Auto Leave/Rejoin CC no longer requires you to wait for the bot to rejoin  
+
 V1.4  
 Added Java webhook instead of external python file  
 Modified reset to be on logout instead of login due to sometimes leaving cc immediately upon login  

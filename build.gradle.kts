@@ -24,14 +24,14 @@ allprojects {
     }
 }
 
-project.extra["GithubUrl"] = "https://github.com/Snake-RS/plugins-release"
+project.extra["GithubUrl"] = "https://github.com/SteelFever/plugins-release"
 
 apply<BootstrapPlugin>()
 
 subprojects {
     group = "com.openosrs.externals"
 
-    project.extra["PluginProvider"] = "Snake"
+    project.extra["PluginProvider"] = "SteelFever"
     project.extra["ProjectSupportUrl"] = ""
     project.extra["PluginLicense"] = "3-Clause BSD License"
 

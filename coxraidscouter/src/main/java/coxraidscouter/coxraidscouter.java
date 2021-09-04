@@ -26,9 +26,6 @@ import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static net.runelite.client.RuneLite.RUNELITE_DIR;
-
-
 @Extension
 @PluginDependency(iUtils.class)
 @PluginDescriptor(
@@ -64,6 +61,7 @@ public class coxraidscouter extends Plugin
 	private String state = "read";
 	private String raidLeaverState = "Awaiting Raider";
 	private boolean raidFound = false;
+	private boolean raidStarted = false;
 	private String raidLayout = null;
 
 	private int SleepDelay(int min, int max){
@@ -78,6 +76,7 @@ public class coxraidscouter extends Plugin
 		raidLeaverState ="Awaiting Raider";
 		raidFound = false;
 		raidLayout = null;
+		raidStarted = false;
 	}
 
 	private Point getLocation(TileObject tileObject)
@@ -103,6 +102,11 @@ public class coxraidscouter extends Plugin
 		this.client.getCanvas().dispatchEvent(keyTyped);
 	}
 
+	private void Print(String string) //used for debugging, puts a message to the in game chat.
+	{
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE,"",string,"");
+	}
+
 	private void StateHandler() throws IOException {
 		if (timeout!=0)
 		{
@@ -120,10 +124,31 @@ public class coxraidscouter extends Plugin
 					MenuEntry ReadBoard = new MenuEntry("Read", "<col=ffff>Recruiting board", recruitingBoardObject.getId(), MenuAction.GAME_OBJECT_FIRST_OPTION.getId(), getLocation(recruitingBoardObject).getX(), getLocation(recruitingBoardObject).getY(), false);
 					menu.setEntry(ReadBoard);
 					mouse.delayMouseClick(client.getMouseCanvasPosition(), SleepDelay(2000, 3000));
-					state = "make party";
+					state = "check for existing raid";
 					timeout += 8;//tick delay between actions
 				}
 				break;
+
+			case "check for existing raid":
+				if (client.getWidget(229,1)!=null) //if raid occupied message shows
+				{
+					if (client.getWidget(229,1).getText().startsWith("Your party has embarked on its raid"))
+					{
+						if (raidStarted)
+						{
+							reset(); //restarts the scouter when the raid is started
+						}
+					}
+				}
+
+				if (client.getWidget(499, 2) != null) //if board is visible scouting can be immediately started
+				{
+					state = "make party";
+					raidFound = false;
+				}
+				timeout +=1;
+				break;
+
 			case "make party":
 				if (client.getWidget(499, 58) != null) {
 					MenuEntry MakeParty = new MenuEntry("Make party", "", 1, MenuAction.CC_OP.getId(), -1, 32702522, false);
@@ -143,7 +168,7 @@ public class coxraidscouter extends Plugin
 					menu.setEntry(EnterCox);
 					mouse.delayMouseClick(client.getMouseCanvasPosition(), SleepDelay(300, 800));
 					state = "start raid";
-					timeout += 16;//tick delay between actions
+					timeout += 16;
 				}
 				break;
 			case "start raid": //main logic for leaving raid, either starts and continues scouting or waits til raider joins then leaves and rejoins cc
@@ -197,7 +222,7 @@ public class coxraidscouter extends Plugin
 											webhook.setContent(client.getLocalPlayer().getName() + " - Raid Taken. Now Scouting.");
 											webhook.execute();
 										}
-										client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Raider in raid, should be leaving cc", null);
+										Print("Raider in raid, should be leaving cc");
 										MenuEntry LeaveCC = new MenuEntry("Leave", "", 6, MenuAction.CC_OP_LOW_PRIORITY.getId(), -1, 458770, true);
 										menu.setEntry(LeaveCC);
 										mouse.delayMouseClick(client.getMouseCanvasPosition(), SleepDelay(100, 300));
@@ -240,6 +265,7 @@ public class coxraidscouter extends Plugin
 								}
 								break;
 							case "Idle":
+								reset();
 								break;
 						}
 					} else {
@@ -250,7 +276,7 @@ public class coxraidscouter extends Plugin
 					menu.setEntry(StartRaid);
 					mouse.delayMouseClick(client.getMouseCanvasPosition(), SleepDelay(300, 800));
 					state = "continue";
-					timeout += 4;//tick delay between actions
+					timeout += 4;
 				}
 				break;
 			case "continue":
@@ -272,7 +298,7 @@ public class coxraidscouter extends Plugin
 					menu.setEntry(ClimbSteps);
 					mouse.delayMouseClick(client.getMouseCanvasPosition(), SleepDelay(300, 800));
 					state = "leave raid";
-					timeout += 4;//tick delay between actions
+					timeout += 4;
 				}
 				break;
 			case "leave raid":
@@ -320,7 +346,7 @@ public class coxraidscouter extends Plugin
 	public void onChatMessage(ChatMessage event) throws IOException {
 		if ((Text.removeTags((event.getMessage())).endsWith("start the raid without you. Sorry."))) //Restarts the plugin if someone starts the raid currently held
 		{
-			reset();
+			raidStarted = true;
 		}
 		if ((Text.removeTags(event.getMessage())).startsWith("Layout"))
 		{
@@ -339,7 +365,7 @@ public class coxraidscouter extends Plugin
 			{
 				if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 				{
-					client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","Raid is incorrect size",null);
+					Print("Raid is incorrect size");
 				}
 				return;
 			}
@@ -348,7 +374,17 @@ public class coxraidscouter extends Plugin
 			{
 				boolean rotationMatchFound = false;
 				//a lot of bodged additions to make the string fit with the Match
-				String compareRotation  = roomsTrimmed.toString().replace("[","").replace("]","").replace("Tightrope","").replace("Crabs","").replace("Ice Demon","").replace("Thieving","").replaceAll(",+","").replace("  "," ").strip();
+				String compareRotation  = roomsTrimmed
+						.toString()
+						.replace("[","")
+						.replace("]","")
+						.replace("Tightrope","")
+						.replace("Crabs","")
+						.replace("Ice Demon","")
+						.replace("Thieving","")
+						.replaceAll(",+","")
+						.replace("  "," ")
+						.strip();
 				List<String> allMatches = new ArrayList<String>();
 				Matcher m = Pattern.compile("\\[(.*?)]")
 						.matcher(config.desiredRotations());
@@ -357,7 +393,11 @@ public class coxraidscouter extends Plugin
 				}
 				for (String item : allMatches)
 				{
-					item = item.replace(","," ").replace("[","").replace("]","").strip();
+					item = item
+							.replace(","," ")
+							.replace("[","")
+							.replace("]","")
+							.strip();
 					if (item.equals(compareRotation))
 					{
 						rotationMatchFound = true;
@@ -367,7 +407,7 @@ public class coxraidscouter extends Plugin
 				{
 					if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 					{
-						client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","No rotation match found",null);
+						Print("No rotation match found");
 					}
 					return;
 				}
@@ -379,7 +419,7 @@ public class coxraidscouter extends Plugin
 				{
 					if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 					{
-						client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","Raid doesn't contain Tightrope",null);
+						Print("Raid doesn't contain Tightrope");
 					}
 					return; //returns if no tightrope
 				}
@@ -395,7 +435,7 @@ public class coxraidscouter extends Plugin
 						{
 							if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 							{
-								client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","Raid contains bad crabs",null);
+								Print("Raid contains bad crabs");
 							}
 							return; //returns if bad crabs
 						}
@@ -413,7 +453,7 @@ public class coxraidscouter extends Plugin
 					{
 						if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 						{
-							client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","Blacklisted room found: " + room,null);
+							Print("Blacklisted room found: " + room);
 						}
 						return; //returns if any blacklisted room in raid
 					}
@@ -428,7 +468,7 @@ public class coxraidscouter extends Plugin
 				{
 					if (room.equals(ovlRoom))
 					{
-						client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","Raid Found, waiting for raider.",null);
+						Print("Raid Found, waiting for raider.");
 						raidFound=true;
 						if (!config.webhook().equals("")) //if webhook exists, post raid, world, cc to webhook
 						{
@@ -448,7 +488,7 @@ public class coxraidscouter extends Plugin
 			}
 			if (config.debugScouting()) //if debugScouting enabled adds reason for leaving raid to game chat
 			{
-				client.addChatMessage(ChatMessageType.GAMEMESSAGE,"","No Overload in raid",null);
+				Print("No Overload in raid");
 			}
 		}
 	}
